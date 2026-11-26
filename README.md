@@ -134,10 +134,11 @@ flutter run --dart-define=DEMO=true             # launch with simulated lights
 bash tool/package_android.sh --unsigned --debug # build unsigned release APKs locally
 ```
 
-To run the Ruby hook and release script tests:
+To run the hook and release script tests:
 
 ```sh
 for t in scripts/test_*.rb; do ruby "$t"; done
+for t in scripts/test_*.sh; do bash "$t"; done
 ```
 
 ## Documentation

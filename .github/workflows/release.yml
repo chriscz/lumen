@@ -10,12 +10,14 @@
 #     emits SLSA build provenance attestations via actions/attest-build-provenance.
 #
 # Two ways to publish a release:
-#   1. GitHub UI: Actions -> release -> Run workflow -> enter version (e.g. 0.1.0).
-#      Bumps pubspec.yaml (+versionCode), rolls CHANGELOG.md [Unreleased],
-#      writes fastlane/metadata/android/en-US/changelogs/<versionCode>.txt,
-#      commits to main if changed, tags vX.Y.Z, builds signed split-per-ABI +
-#      universal APKs + SHA256SUMS.txt, attests provenance, and creates a
-#      GitHub Release (draft by default).
+#   1. GitHub UI: Actions -> release -> Run workflow (leave version as 'auto'
+#      to compute the next semver and generate CHANGELOG.md from Conventional
+#      Commits since the last v*.*.* tag, or enter an explicit version like 0.2.0).
+#      Updates pubspec.yaml (+versionCode), CHANGELOG.md, and
+#      fastlane/metadata/android/en-US/changelogs/<versionCode>.txt via
+#      scripts/prepare_release.sh, commits to main if changed, tags vX.Y.Z,
+#      builds signed split-per-ABI + universal APKs + SHA256SUMS.txt, attests
+#      provenance, and creates a GitHub Release (draft by default).
 #   2. Tag push: git tag -a v0.1.0 -m "Release v0.1.0" && git push origin v0.1.0.
 name: release
 
@@ -23,8 +25,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Semantic version to release (e.g. 0.1.0, without leading v)"
-        required: true
+        description: "Next semantic version ('auto' from Conventional Commits, or explicit e.g. 0.2.0)"
+        required: false
+        default: "auto"
         type: string
       draft:
         description: "Create as a draft GitHub Release for review before publishing"
@@ -68,11 +71,17 @@ jobs:
           GITHUB_REF_NAME: ${{ github.ref_name }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            VER="${INPUT_VERSION#v}"
+            RAW_VER="${INPUT_VERSION:-auto}"
+            RAW_VER="${RAW_VER#v}"
+            if [ "$RAW_VER" = "auto" ]; then
+              VER="$(bash scripts/prepare_release.sh --next-version --debug)"
+            else
+              VER="$RAW_VER"
+            fi
             TAG="v${VER}"
             DRAFT="${INPUT_DRAFT:-true}"
 
-            ruby scripts/prepare_release.rb --version "$VER" --debug
+            bash scripts/prepare_release.sh --version "$VER" --debug
 
             git config user.name "Chris Coetzee"
             git config user.email "chriscz93@gmail.com"
@@ -97,7 +106,7 @@ jobs:
             TAG="$GITHUB_REF_NAME"
             VER="${TAG#v}"
             DRAFT="false"
-            ruby scripts/prepare_release.rb --check-version "$VER" --debug
+            bash scripts/prepare_release.sh --check-version "$VER" --debug
             REF="$(git rev-parse HEAD)"
           fi
 
@@ -122,11 +131,12 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Run Ruby script tests, em-dash check, and signing secret check
+      - name: Run script tests, em-dash check, and signing secret check
         run: |
           ruby scripts/check_em_dashes.rb --all
           ruby scripts/check_signing_secrets.rb --all
           for t in scripts/test_*.rb; do ruby "$t"; done
+          for t in scripts/test_*.sh; do bash "$t"; done
 
       - name: Verify release signing secrets are configured
         env:
@@ -200,7 +210,7 @@ jobs:
 
       - name: Extract release notes from CHANGELOG.md
         run: |
-          if ! ruby scripts/prepare_release.rb --extract-notes "${{ needs.prepare.outputs.version }}" --out dist/release-notes.md; then
+          if ! bash scripts/prepare_release.sh --extract-notes "${{ needs.prepare.outputs.version }}" --out dist/release-notes.md; then
             rm -f dist/release-notes.md
           fi
 

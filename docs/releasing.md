@@ -122,24 +122,26 @@ Two pure GitHub-native paths are supported (`.github/workflows/release.yml`):
 
 ### Option A: One-Click from GitHub UI (Recommended)
 
-1. Update the `## [Unreleased]` section of `CHANGELOG.md` on `main`.
-2. Open **Actions > release > Run workflow** on `main`.
-3. Enter the version (for example `0.1.0`, without leading `v`) and keep **draft** checked to review before publishing.
-4. Approve the `release` environment deployment prompt when `build-and-sign` pauses for your review.
-5. The workflow updates `pubspec.yaml` (incrementing `+versionCode`), rolls `CHANGELOG.md`, writes `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, tags `v0.1.0`, runs all Ruby and Flutter tests (100% coverage gate), builds and verifies signed `arm64-v8a`, `armeabi-v7a`, `x86_64`, and `universal` APKs + `SHA256SUMS.txt`, generates SLSA provenance attestations, and creates a draft GitHub Release.
-6. Inspect the draft release and click **Publish release**.
+No manual changelog edits required: `scripts/prepare_release.sh` automatically computes the next semantic version from Conventional Commits since the last `v*.*.*` tag (breaking `!` bumps major on `>=1.0` or minor on `0.x`; `feat` bumps minor; `fix`/`perf` bumps patch) and generates the grouped `CHANGELOG.md` and Fastlane notes.
+
+1. Open **Actions > release > Run workflow** on `main`.
+2. Leave **version** as `auto` (or enter an explicit version such as `1.0.0`) and keep **draft** checked to review before publishing.
+3. Approve the `release` environment deployment prompt when `build-and-sign` pauses for your review.
+4. The workflow updates `pubspec.yaml` (incrementing `+versionCode`), generates/rolls `CHANGELOG.md`, writes `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, tags `vX.Y.Z`, runs all script and Flutter tests (100% coverage gate), builds and verifies signed `arm64-v8a`, `armeabi-v7a`, `x86_64`, and `universal` APKs + `SHA256SUMS.txt`, generates SLSA provenance attestations, and creates a draft GitHub Release.
+5. Inspect the draft release and click **Publish release**.
 
 ### Option B: Local Prep + Tag Push
 
 ```sh
-ruby scripts/prepare_release.rb --version 0.1.0 --debug
+bash scripts/prepare_release.sh --version auto --debug
+VER="$(sed -n 's/^version:[[:space:]]*\([^[:space:]+#]*\).*/\1/p' pubspec.yaml | head -n 1)"
 git add pubspec.yaml CHANGELOG.md fastlane/
-git commit -m "chore(release): prepare v0.1.0" \
+git commit -m "chore(release): prepare v${VER}" \
   -m "Assisted-by-AI-model: none" \
   -m "Assisted-by-AI-harness: none"
 git push origin main
-git tag -a v0.1.0 -m "Release v0.1.0"
-git push origin v0.1.0
+git tag -a "v${VER}" -m "Release v${VER}"
+git push origin "v${VER}"
 ```
 
 Approve the `release` environment prompt in GitHub Actions when notified.
@@ -167,7 +169,7 @@ Lumen is already prepared for F-Droid's free-software and reproducible-build req
 - **Application ID:** `dev.chriscz.lumen` (permanent).
 - **100% FOSS dependencies:** All pub.dev packages are MIT/BSD-3-Clause/Apache-2.0 with zero Google Play Services or proprietary SDKs.
 - **No Play dependency blob:** `android/app/build.gradle.kts` sets `dependenciesInfo { includeInApk = false; includeInBundle = false }`.
-- **Fastlane metadata:** `fastlane/metadata/android/en-US/` holds title, descriptions, icon, screenshots, and per-`versionCode` changelogs (automatically kept in sync by `scripts/prepare_release.rb`).
+- **Fastlane metadata:** `fastlane/metadata/android/en-US/` holds title, descriptions, icon, screenshots, and per-`versionCode` changelogs (automatically kept in sync by `scripts/prepare_release.sh`).
 - **Pinned toolchain:** Exact Flutter version (`3.47.7`), `pubspec.lock`, and Gradle wrapper are committed.
 
 ### Why Reproducible Builds Matter

@@ -36,13 +36,17 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Check em-dashes, signing secrets, and Ruby script tests
+      - name: Check em-dashes, signing secrets, and script tests
         run: |
           ruby scripts/check_em_dashes.rb --all
           ruby scripts/check_signing_secrets.rb --all
           for t in scripts/test_*.rb; do
             echo "==> $t"
             ruby "$t"
+          done
+          for t in scripts/test_*.sh; do
+            echo "==> $t"
+            bash "$t"
           done
 
       - name: Set up JDK 21

@@ -21,7 +21,7 @@ Local-first Android controller for Philips Hue lights over Bluetooth Low Energy 
 - `lib/ui/`: Material 3 screens and widgets.
 - `packages/`: Local Android Flutter plugins (`lumen_bonded_devices`, `lumen_bridge_service`, `lumen_audio_capture`).
 - `tool/`: Coverage checker (`coverage.sh`, `check_coverage.dart`), deterministic Android APK packager (`package_android.sh`), and cloud setup (`setup_cloud_env.sh`).
-- `scripts/`: Repo guard hooks (`check_*.rb`) and release helper (`prepare_release.rb`), each with a sibling `test_<script>.rb` minitest suite.
+- `scripts/`: Repo guard hooks (`check_*.rb`) and pure-bash release helper (`prepare_release.sh`), each with a sibling test suite (`test_*.rb` / `test_*.sh`).
 - `fastlane/metadata/android/`: F-Droid / Fastlane store metadata and per-versionCode changelogs.
 - `packaging/fdroid/`: Draft F-Droid `fdroiddata` reproducible-build recipe.
 - `docs/`: Protocol reference (`protocol.md`), architecture (`architecture.md`), music sync (`music-sync.md`), releasing & signing security runbook (`releasing.md`), and screenshots.
@@ -31,7 +31,7 @@ Local-first Android controller for Philips Hue lights over Bluetooth Low Energy 
 - Install git hooks with `lefthook install` (`lefthook.yml`). Never bypass with `--no-verify`.
 - Run Dart/Flutter analysis and full test suite (including headless E2E tests): `flutter analyze && flutter test`.
 - Enforce 100% line coverage across `lib/`: `bash tool/coverage.sh`.
-- Run all Ruby hook and release script tests: `for t in scripts/test_*.rb; do ruby "$t"; done`.
+- Run all hook and release script tests: `for t in scripts/test_*.rb; do ruby "$t"; done && for t in scripts/test_*.sh; do bash "$t"; done`.
 
 ## Signing Key Security
 
