@@ -1,0 +1,19 @@
+name: lumen_bridge_service
+description: "Android side of Lumen's emulated Hue Bridge: a foreground service, wake locks while charging, and NsdManager mDNS."
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: ^3.13.5
+  flutter: '>=3.3.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: dev.chriscz.lumen_bridge_service
+        pluginClass: LumenBridgeServicePlugin

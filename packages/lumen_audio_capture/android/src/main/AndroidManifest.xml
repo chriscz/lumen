@@ -1,0 +1,20 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Hearing the music: the microphone, and Android asks for it before
+         the Visualizer or audio capture too. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- The Visualizer on the phone's sound output (audio session 0). -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Keeps music sync listening while another app, such as Spotify, is in
+         front: a microphone service for the microphone and the Visualizer,
+         a media projection service for audio capture. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <application>
+        <service
+            android:name="dev.chriscz.lumen_audio_capture.MusicSyncService"
+            android:exported="false"
+            android:foregroundServiceType="microphone|mediaProjection" />
+    </application>
+</manifest>

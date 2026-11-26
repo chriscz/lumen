@@ -1,0 +1,18 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Keeps the emulated Hue Bridge listening with the screen off. It
+         serves and controls Bluetooth bulbs, so the type is connectedDevice;
+         the app's CHANGE_WIFI_MULTICAST_STATE meets that type's prerequisite
+         on Android 14 and later. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <!-- The service's ongoing notification, asked for on Android 13+. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Only for "Stay fully awake while charging", off by default. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <application>
+        <service
+            android:name="dev.chriscz.lumen_bridge_service.BridgeForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+    </application>
+</manifest>

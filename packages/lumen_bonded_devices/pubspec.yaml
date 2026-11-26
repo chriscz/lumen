@@ -1,0 +1,19 @@
+name: lumen_bonded_devices
+description: "Small Android helpers for Lumen: bonded Bluetooth devices and the app settings page."
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: ^3.13.5
+  flutter: '>=3.3.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: dev.chriscz.lumen_bonded_devices
+        pluginClass: LumenBondedDevicesPlugin

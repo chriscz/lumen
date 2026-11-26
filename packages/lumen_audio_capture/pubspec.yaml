@@ -1,0 +1,19 @@
+name: lumen_audio_capture
+description: "Android side of Lumen's music sync: the microphone, the Visualizer on the phone's sound output, and audio playback capture."
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: ^3.13.5
+  flutter: '>=3.3.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: dev.chriscz.lumen_audio_capture
+        pluginClass: LumenAudioCapturePlugin

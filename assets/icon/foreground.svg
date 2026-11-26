@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <clipPath id="env">
+      <path d="M512 210 C650 210 742 312 742 438 C742 548 662 618 600 668 C576 688 566 708 562 726 L462 726 C458 708 448 688 424 668 C362 618 282 548 282 438 C282 312 374 210 512 210 Z"/>
+    </clipPath>
+    <radialGradient id="shine" cx="0.38" cy="0.3" r="0.75">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#3a0a10" stop-opacity="0.45"/>
+    </radialGradient>
+  </defs>
+  <!-- A far balloon for depth -->
+  <g transform="translate(150 330) scale(0.2)" opacity="0.9">
+    <path fill="#f97316" d="M512 210 C650 210 742 312 742 438 C742 548 662 618 600 668 C576 688 566 708 562 726 L462 726 C458 708 448 688 424 668 C362 618 282 548 282 438 C282 312 374 210 512 210 Z"/>
+    <rect x="482" y="760" width="60" height="44" rx="8" fill="#5b2a1a"/>
+  </g>
+  <g transform="translate(250 30) scale(0.72)">
+  <!-- Envelope gores: red and orange, with a golden band -->
+  <g clip-path="url(#env)">
+    <rect x="270" y="200" width="480" height="540" fill="#e2362b"/>
+    <path fill="#f97316" d="M512 200 C455 260 432 360 432 450 C432 560 470 650 490 740 L534 740 C554 650 592 560 592 450 C592 360 569 260 512 200 Z"/>
+    <path fill="#f97316" d="M300 300 C330 360 338 440 330 520 C322 600 360 660 400 740 L330 740 L260 300 Z"/>
+    <path fill="#f97316" d="M724 300 C694 360 686 440 694 520 C702 600 664 660 624 740 L694 740 L764 300 Z"/>
+    <rect x="270" y="590" width="480" height="34" fill="#fbbf24"/>
+    <rect x="270" y="210" width="480" height="560" fill="url(#shine)"/>
+  </g>
+  <!-- Ropes and basket -->
+  <g stroke="#3b1d14" stroke-width="7" stroke-linecap="round">
+    <line x1="466" y1="726" x2="478" y2="790"/>
+    <line x1="558" y1="726" x2="546" y2="790"/>
+    <line x1="500" y1="726" x2="500" y2="790"/>
+    <line x1="524" y1="726" x2="524" y2="790"/>
+  </g>
+  <rect x="466" y="786" width="92" height="64" rx="12" fill="#8a4a24"/>
+  <rect x="466" y="786" width="92" height="16" rx="6" fill="#5b2a1a"/>
+  </g>
+</svg>
