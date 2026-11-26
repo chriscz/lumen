@@ -36,7 +36,7 @@ Local-first Android controller for Philips Hue lights over Bluetooth Low Energy 
 ## Signing Key Security
 
 - **Never commit signing keystores (`*.jks`, `*.keystore`, `*.p12`, `*.pfx`, `*.pk8`), `key.properties`, or private keys.** Enforced by `.gitignore` and `scripts/check_signing_secrets.rb`.
-- Release signing credentials live **only** as GitHub Environment Secrets inside the protected `release` Environment (restricted to `v*.*.*` tags and `main` with required reviewer approval).
+- Release signing credentials live **only** as GitHub Environment Secrets inside the protected `release` Environment (restricted to `v*.*.*` tags only, with required reviewer approval). The release-prep GitHub App credentials live **only** in the `release-bot` Environment (restricted to `main` branch only).
 - PR workflows (`ci.yml`) must never reference the `release` environment or read signing secrets; they build unsigned release APKs only.
 - See [docs/releasing.md](docs/releasing.md) for keystore generation, backup, repository rulesets, Obtainium, and F-Droid Reproducible Builds.
 

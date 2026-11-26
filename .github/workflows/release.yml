@@ -1,39 +1,37 @@
-# Pure GitHub-native Android release pipeline (zero third-party actions).
+# Pure GitHub-native Android release pipeline (official actions/* only, pinned by SHA).
 #
-# Security model:
-#   - Top-level permissions are read-only; each job elevates only what it needs.
-#   - Android release signing credentials live ONLY as GitHub Environment Secrets
-#     in the protected `release` Environment (restricted to v*.*.* tags / main
-#     with required reviewer approval). PRs can never read signing keys.
-#   - `build-and-sign` downloads a fresh SHA-256-verified Flutter SDK and does
-#     not restore PR build caches, then verifies every APK with apksigner and
-#     emits SLSA build provenance attestations via actions/attest-build-provenance.
+# Security model (two isolated GitHub Environments):
+#   1. `release-bot` Environment (restricted to `main` branch ONLY):
+#      Holds `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` for a dedicated
+#      GitHub App added to the Bypass list of `protect-main` and
+#      `protect-release-tags` rulesets (Contents: Read & write only).
+#      Only runs on manual `workflow_dispatch` to prepare and tag the release.
+#   2. `release` Environment (restricted to `v*.*.*` tags ONLY + required reviewer):
+#      Holds the Android release signing keystore (`ANDROID_KEYSTORE_*`).
+#      Only runs when a `v*.*.*` tag is pushed (either by the GitHub App above
+#      or manually by the repo owner). PRs and branches can NEVER access either
+#      environment or any signing secret.
 #
-# Two ways to publish a release:
-#   1. GitHub UI: Actions -> release -> Run workflow (leave version as 'auto'
-#      to compute the next semver and generate CHANGELOG.md from Conventional
-#      Commits since the last v*.*.* tag, or enter an explicit version like 0.2.0).
-#      Updates pubspec.yaml (+versionCode), CHANGELOG.md, and
-#      fastlane/metadata/android/en-US/changelogs/<versionCode>.txt via
-#      scripts/prepare_release.sh, commits to main if changed, tags vX.Y.Z,
-#      builds signed split-per-ABI + universal APKs + SHA256SUMS.txt, attests
-#      provenance, and creates a GitHub Release (draft by default).
-#   2. Tag push: git tag -a v0.1.0 -m "Release v0.1.0" && git push origin v0.1.0.
+# Two ways to cut a release:
+#   1. GitHub UI (recommended): Actions -> release -> Run workflow on `main`.
+#      Leave version as `auto` (or enter explicit e.g. `1.0.0`). `prepare`
+#      computes the next semver and CHANGELOG.md from Conventional Commits via
+#      scripts/prepare_release.sh, updates pubspec.yaml (+versionCode) and
+#      Fastlane release notes, pushes the prep commit to `main` and tag `vX.Y.Z`
+#      using the GitHub App token. That tag push automatically triggers the
+#      `v*.*.*` build-and-sign -> publish pipeline (always created as a draft
+#      GitHub Release for final review).
+#   2. Local tag push: prepare locally, push PR to `main`, then push `vX.Y.Z`.
 name: release
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Next semantic version ('auto' from Conventional Commits, or explicit e.g. 0.2.0)"
+        description: "Next semantic version ('auto' from Conventional Commits, or explicit e.g. 1.0.0)"
         required: false
         default: "auto"
         type: string
-      draft:
-        description: "Create as a draft GitHub Release for review before publishing"
-        required: false
-        default: true
-        type: boolean
   push:
     tags:
       - "v*.*.*"
@@ -48,75 +46,72 @@ env:
 
 jobs:
   prepare:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      contents: write
-    outputs:
-      version: ${{ steps.meta.outputs.version }}
-      tag: ${{ steps.meta.outputs.tag }}
-      ref: ${{ steps.meta.outputs.ref }}
-      draft: ${{ steps.meta.outputs.draft }}
+    environment: release-bot
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-
-      - name: Prepare or validate release version and tag
-        id: meta
+      - name: Verify release GitHub App secrets are configured
         env:
-          INPUT_VERSION: ${{ inputs.version }}
-          INPUT_DRAFT: ${{ inputs.draft }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
+          HAS_APP_ID: ${{ secrets.RELEASE_APP_ID != '' }}
+          HAS_APP_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY != '' }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            RAW_VER="${INPUT_VERSION:-auto}"
-            RAW_VER="${RAW_VER#v}"
-            if [ "$RAW_VER" = "auto" ]; then
-              VER="$(bash scripts/prepare_release.sh --next-version --debug)"
-            else
-              VER="$RAW_VER"
-            fi
-            TAG="v${VER}"
-            DRAFT="${INPUT_DRAFT:-true}"
-
-            bash scripts/prepare_release.sh --version "$VER" --debug
-
-            git config user.name "Chris Coetzee"
-            git config user.email "chriscz93@gmail.com"
-
-            if [ -n "$(git status --porcelain pubspec.yaml CHANGELOG.md fastlane/)" ]; then
-              git add pubspec.yaml CHANGELOG.md fastlane/
-              git commit -m "chore(release): prepare ${TAG}" \
-                -m "Update pubspec.yaml, CHANGELOG.md, and Fastlane release notes for ${TAG}." \
-                -m "Assisted-by-AI-model: github-actions" \
-                -m "Assisted-by-AI-harness: github-actions"
-              git push origin HEAD:main
-            fi
-
-            if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
-              echo "Tag ${TAG} already exists; reusing existing tag."
-            else
-              git tag -a "$TAG" -m "Release ${TAG}"
-              git push origin "$TAG"
-            fi
-            REF="$(git rev-parse "${TAG}^{commit}")"
-          else
-            TAG="$GITHUB_REF_NAME"
-            VER="${TAG#v}"
-            DRAFT="false"
-            bash scripts/prepare_release.sh --check-version "$VER" --debug
-            REF="$(git rev-parse HEAD)"
+          if [ "$HAS_APP_ID" != "true" ] || [ "$HAS_APP_KEY" != "true" ]; then
+            echo "Error: missing RELEASE_APP_ID or RELEASE_APP_PRIVATE_KEY in the 'release-bot' Environment." >&2
+            echo "See docs/releasing.md for GitHub App ruleset bypass setup." >&2
+            exit 1
           fi
 
-          echo "version=${VER}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "ref=${REF}" >> "$GITHUB_OUTPUT"
-          echo "draft=${DRAFT}" >> "$GITHUB_OUTPUT"
+      - name: Mint short-lived GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+
+      - name: Prepare version, auto-changelog, commit to main, and push release tag
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          RAW_VER="${INPUT_VERSION:-auto}"
+          RAW_VER="${RAW_VER#v}"
+          if [ "$RAW_VER" = "auto" ]; then
+            VER="$(bash scripts/prepare_release.sh --next-version --debug)"
+          else
+            VER="$RAW_VER"
+          fi
+          TAG="v${VER}"
+
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            echo "Error: tag ${TAG} already exists." >&2
+            exit 1
+          fi
+
+          bash scripts/prepare_release.sh --version "$VER" --debug
+
+          git config user.name "Chris Coetzee"
+          git config user.email "chriscz93@gmail.com"
+
+          if [ -n "$(git status --porcelain pubspec.yaml CHANGELOG.md fastlane/)" ]; then
+            git add pubspec.yaml CHANGELOG.md fastlane/
+            git commit -m "chore(release): prepare ${TAG}" \
+              -m "Update pubspec.yaml, CHANGELOG.md, and Fastlane release notes for ${TAG}." \
+              -m "Assisted-by-AI-model: github-actions" \
+              -m "Assisted-by-AI-harness: github-actions"
+            git push origin HEAD:main
+          fi
+
+          git tag -a "$TAG" -m "Release ${TAG}"
+          git push origin "$TAG"
+          echo "Pushed ${TAG}; the tag push will now trigger the build-and-sign release workflow."
 
   build-and-sign:
-    needs: prepare
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     environment: release
@@ -124,12 +119,24 @@ jobs:
       contents: read
       id-token: write
       attestations: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.prepare.outputs.ref }}
           fetch-depth: 1
           persist-credentials: false
+
+      - name: Validate release tag matches pubspec.yaml
+        id: meta
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VER="${TAG#v}"
+          bash scripts/prepare_release.sh --check-version "$VER" --debug
+          echo "version=${VER}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Run script tests, em-dash check, and signing secret check
         run: |
@@ -192,7 +199,7 @@ jobs:
           LUMEN_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           bash tool/package_android.sh \
-            --version "${{ needs.prepare.outputs.version }}" \
+            --version "${{ steps.meta.outputs.version }}" \
             --out-dir dist \
             --debug
 
@@ -210,7 +217,7 @@ jobs:
 
       - name: Extract release notes from CHANGELOG.md
         run: |
-          if ! bash scripts/prepare_release.sh --extract-notes "${{ needs.prepare.outputs.version }}" --out dist/release-notes.md; then
+          if ! bash scripts/prepare_release.sh --extract-notes "${{ steps.meta.outputs.version }}" --out dist/release-notes.md; then
             rm -f dist/release-notes.md
           fi
 
@@ -221,7 +228,8 @@ jobs:
           retention-days: 7
 
   publish:
-    needs: [prepare, build-and-sign]
+    if: github.event_name == 'push'
+    needs: build-and-sign
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -232,12 +240,11 @@ jobs:
           name: android-release-assets
           path: dist/
 
-      - name: Create or update GitHub Release and upload Android APKs
+      - name: Create or update draft GitHub Release and upload Android APKs
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ needs.prepare.outputs.tag }}
-          DRAFT: ${{ needs.prepare.outputs.draft }}
+          TAG: ${{ needs.build-and-sign.outputs.tag }}
         run: |
           NOTES_ARGS=()
           if [ -f dist/release-notes.md ]; then
@@ -250,14 +257,10 @@ jobs:
           if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/* --repo "$GH_REPO" --clobber
           else
-            DRAFT_ARGS=()
-            if [ "$DRAFT" = "true" ]; then
-              DRAFT_ARGS=(--draft)
-            fi
             gh release create "$TAG" dist/* \
               --repo "$GH_REPO" \
               --verify-tag \
               --title "$TAG" \
-              "${DRAFT_ARGS[@]}" \
+              --draft \
               "${NOTES_ARGS[@]}"
           fi

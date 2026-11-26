@@ -11,10 +11,11 @@ Android release signing keys are permanent cryptographic identity credentials. I
 Lumen enforces strict separation between untrusted PR CI and release signing:
 
 1. **Zero signing secrets in `ci.yml`:** Pull request and branch CI builds an **unsigned** release APK (`--unsigned`) and never references any signing environment or secret.
-2. **Environment-scoped secrets only:** Signing secrets are stored **only** inside a protected GitHub Environment named `release`, never as repository-wide secrets.
-3. **Tag/branch deployment restrictions + manual approval:** The `release` Environment only allows deployment from `v*.*.*` tags (and `main` for manual `workflow_dispatch`) and requires explicit owner approval before any signing job can start.
-4. **Clean release environment:** `release.yml`'s `build-and-sign` job does not restore PR build caches, downloads a fresh SHA-256-verified Flutter SDK, decodes the keystore into a `chmod 600` temp file outside the workspace, shreds it in `if: always()`, verifies every APK with `apksigner`, and attaches SLSA build provenance attestations (`actions/attest-build-provenance`).
-5. **Local secret guards:** `.gitignore` and `scripts/check_signing_secrets.rb` (pre-commit and pre-push via `lefthook`) block accidental commits of `*.jks`, `*.keystore`, `*.p12`, `*.pfx`, `*.pk8`, `key.properties`, or PEM private keys.
+2. **Two isolated GitHub Environments:**
+   - **`release-bot` (`main` branch only):** Holds the dedicated GitHub App credentials (`RELEASE_APP_ID`, `RELEASE_APP_PRIVATE_KEY`) used solely to push `chore(release)` commits to `main` and push `v*.*.*` tags via a ruleset bypass.
+   - **`release` (`v*.*.*` tags only + required reviewer):** Holds the Android release signing keystore (`ANDROID_KEYSTORE_*`). Not even `main` can touch the signing keystore; only a tagged release approved by you can sign APKs.
+3. **Clean release environment:** `release.yml`'s `build-and-sign` job does not restore PR build caches, downloads a fresh SHA-256-verified Flutter SDK, decodes the keystore into a `chmod 600` temp file outside the workspace, shreds it in `if: always()`, verifies every APK with `apksigner`, and attaches SLSA build provenance attestations (`actions/attest-build-provenance`).
+4. **Local secret guards:** `.gitignore` and `scripts/check_signing_secrets.rb` (pre-commit and pre-push via `lefthook`) block accidental commits of `*.jks`, `*.keystore`, `*.p12`, `*.pfx`, `*.pk8`, `key.properties`, or PEM private keys.
 
 ---
 
@@ -73,41 +74,51 @@ If you ever lose this keystore, you cannot update existing Obtainium or F-Droid 
 
 ---
 
-## 4. Configure GitHub Repository Rules & `release` Environment
+## 4. Configure GitHub App Bypass, Environments & Repository Rules
 
-Complete these one-time settings in `https://github.com/chriscz/lumen/settings`:
+Complete these one-time settings so `main` and `v*.*.*` tags stay strictly protected while `workflow_dispatch` can still commit release prep files and trigger signed builds:
 
-### A. Create the Protected `release` Environment
+### A. Create a Dedicated Release GitHub App (Least-Privilege Bypass)
 
-Go to **Settings > Environments > New environment** and name it exactly **`release`**.
+1. Go to **GitHub Settings > Developer settings > GitHub Apps > New GitHub App**.
+2. Name it (e.g. `chriscz-lumen-release-bot`), set any homepage URL (`https://github.com/chriscz/lumen`), and **uncheck** Webhook -> Active.
+3. Under **Repository permissions**, set **Contents: Read and write** (leave every other permission as **No access**).
+4. Set **Where can this GitHub App be installed?** to **Only on this account**, then create the app.
+5. Note the **App ID**, scroll to **Private keys**, and click **Generate a private key** (downloads a `.pem` file; delete the local copy after uploading to GitHub Environment Secrets, or keep a backup in your password manager).
+6. Go to **Install App** and install it on **`chriscz/lumen` only**.
 
-1. **Deployment protection rules:**
-   - Check **Required reviewers** and add yourself (`chriscz`). Every release signing run will pause and wait for your explicit approval in GitHub UI.
-2. **Deployment branches and tags:**
-   - Select **Selected branches and tags**.
-   - Add tag rule: `v*.*.*`
-   - Add branch rule: `main` (needed when triggering `workflow_dispatch` from `main`).
-   - Do **not** allow all branches or pull requests.
-3. **Environment secrets** (add these four secrets **inside `release`**, NOT in Repository Secrets):
-   - `ANDROID_KEYSTORE_BASE64`: single-line base64 of `lumen-release.p12`
-   - `ANDROID_KEYSTORE_PASSWORD`: keystore password
-   - `ANDROID_KEY_ALIAS`: `lumen`
-   - `ANDROID_KEY_PASSWORD`: key password (same as keystore password for PKCS12)
+### B. Create the Two Protected GitHub Environments
 
-### B. Configure Repository Rulesets
+Go to `https://github.com/chriscz/lumen/settings/environments`:
+
+1. **Environment 1: `release-bot`**
+   - **Deployment branches and tags:** Selected branches and tags -> add branch **`main`** only (no PRs, no other branches).
+   - **Environment secrets:**
+     - `RELEASE_APP_ID`: your GitHub App's numeric App ID
+     - `RELEASE_APP_PRIVATE_KEY`: full PEM contents of the downloaded `.pem` key
+2. **Environment 2: `release`**
+   - **Deployment protection rules:** Check **Required reviewers** and add yourself (`chriscz`). Every APK signing run will pause and wait for your explicit approval in GitHub UI.
+   - **Deployment branches and tags:** Selected branches and tags -> add tag rule **`v*.*.*`** ONLY (not even `main`, never PRs).
+   - **Environment secrets** (NEVER store these in Repository Secrets):
+     - `ANDROID_KEYSTORE_BASE64`: single-line base64 of `lumen-release.p12`
+     - `ANDROID_KEYSTORE_PASSWORD`: keystore password
+     - `ANDROID_KEY_ALIAS`: `lumen`
+     - `ANDROID_KEY_PASSWORD`: key password (same as keystore password for PKCS12)
+
+### C. Configure Repository Rulesets
 
 Go to **Settings > Rules > Rulesets**:
 
 1. **Branch ruleset (`protect-main`):**
    - Target: default branch (`main`).
-   - Enable: Restrict deletions, Block force pushes.
-   - Optionally require pull requests and the `ci / test-and-build` status check. (Note: if using `workflow_dispatch` in `release.yml`, allow GitHub Actions or push release prep commits via PR and trigger releases by pushing a tag.)
+   - Enable: Require a pull request before merging, Restrict deletions, Block force pushes, Require status checks (`ci / test-and-build`).
+   - **Bypass list:** Add your **`chriscz-lumen-release-bot` GitHub App** (and optionally Repository admin).
 2. **Tag ruleset (`protect-release-tags`):**
    - Target: `refs/tags/v*.*.*`.
    - Enable: Restrict creations, Restrict updates, Restrict deletions.
-   - Bypass list: Repository admin (`chriscz`) and GitHub Actions (if using `workflow_dispatch` tagging). This prevents any other contributor from creating a `v*.*.*` tag to trigger `release.yml`.
+   - **Bypass list:** Add **`chriscz-lumen-release-bot` GitHub App** and Repository admin (`chriscz`). No other workflow or contributor can forge a `v*.*.*` tag.
 
-### C. Harden GitHub Actions General Settings
+### D. Harden GitHub Actions General Settings
 
 Go to **Settings > Actions > General**:
 
@@ -125,10 +136,11 @@ Two pure GitHub-native paths are supported (`.github/workflows/release.yml`):
 No manual changelog edits required: `scripts/prepare_release.sh` automatically computes the next semantic version from Conventional Commits since the last `v*.*.*` tag (breaking `!` bumps major on `>=1.0` or minor on `0.x`; `feat` bumps minor; `fix`/`perf` bumps patch) and generates the grouped `CHANGELOG.md` and Fastlane notes.
 
 1. Open **Actions > release > Run workflow** on `main`.
-2. Leave **version** as `auto` (or enter an explicit version such as `1.0.0`) and keep **draft** checked to review before publishing.
-3. Approve the `release` environment deployment prompt when `build-and-sign` pauses for your review.
-4. The workflow updates `pubspec.yaml` (incrementing `+versionCode`), generates/rolls `CHANGELOG.md`, writes `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, tags `vX.Y.Z`, runs all script and Flutter tests (100% coverage gate), builds and verifies signed `arm64-v8a`, `armeabi-v7a`, `x86_64`, and `universal` APKs + `SHA256SUMS.txt`, generates SLSA provenance attestations, and creates a draft GitHub Release.
-5. Inspect the draft release and click **Publish release**.
+2. Leave **version** as `auto` (or enter an explicit version such as `1.0.0`) and click **Run workflow**.
+3. `prepare` runs in the `release-bot` environment, updates `pubspec.yaml` (+`versionCode`), `CHANGELOG.md`, and `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, pushes `chore(release): prepare vX.Y.Z` to `main`, and pushes tag `vX.Y.Z` using the GitHub App token.
+4. That tag push automatically triggers a second `release` workflow run on `vX.Y.Z`, which pauses at your **`release` environment** approval gate.
+5. Click **Review deployments > Approve and deploy**. `build-and-sign` verifies the tag, runs all script and Flutter tests (100% coverage gate), builds and `apksigner`-verifies signed `arm64-v8a`, `armeabi-v7a`, `x86_64`, and `universal` APKs + `SHA256SUMS.txt`, attaches SLSA provenance attestations, and `publish` creates a **draft GitHub Release**.
+6. Inspect the draft release and click **Publish release**.
 
 ### Option B: Local Prep + Tag Push
 
