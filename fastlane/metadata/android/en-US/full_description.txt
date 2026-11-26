@@ -1,0 +1,17 @@
+Lumen is a local-only, open-source Android controller for Philips Hue lights with no cloud account, no analytics, and no internet tracking.
+
+Control your lights two ways behind one unified interface:
+- Bluetooth Low Energy (GATT): connect directly to Hue Bluetooth bulbs with no bridge required.
+- Hue Bridge (Local REST API v1): discover bridges strictly on your local network (mDNS, SSDP, or LAN scan), pair with the link button, and import rooms and lights.
+
+Core features:
+- Colour wheel clamped to each bulb's gamut, white colour temperature, brightness, and built-in bulb effects (candle, fireplace, prism, sunrise, and more).
+- Gradient light editing (2 to 5 colour stops and blend modes), power-on behaviour, minimum brightness, rename on the bulb, and identify (blink).
+- Rooms, linked light clusters, favourite profiles and scenes, and on-bulb sleep fades.
+- Act as a Hue Bridge: expose your Bluetooth and bridge lights on Wi-Fi via Hue Bridge v1 HTTP, mDNS, and SSDP with an Android background foreground service.
+- Demo mode with simulated bulbs and an on-screen diagnostics log with automatic secret redaction.
+
+Experimental features:
+- Music sync (plugin, toggleable in Settings > Plugins): moves lights in time with music using the microphone, phone sound output, or Android audio capture, with Pulse, Colours, and Glow styles and a live 5-second beat trace.
+
+Not affiliated with Signify. Philips Hue is a trademark of Signify.

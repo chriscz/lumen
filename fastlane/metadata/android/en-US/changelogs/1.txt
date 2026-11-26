@@ -1,0 +1,5 @@
+Initial standalone release of Lumen:
+- Direct Bluetooth (GATT) and local-only Hue Bridge v1 light control
+- Colour wheel, white temperature, gradients, effects, power-on settings, rooms, clusters, profiles, and sleep fade
+- Act as a Hue Bridge on local Wi-Fi (mDNS, SSDP, background service)
+- Experimental Music sync plugin (microphone, phone sound, and audio capture)

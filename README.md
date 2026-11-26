@@ -1,15 +1,17 @@
-# Lumen: a Hue light controller
+# Lumen
 
 <img src="assets/icon/icon-1024.png" alt="Lumen icon: a red and orange hot air balloon over Table Mountain at dusk" width="128">
 
-An Android app, written in Flutter, that controls Philips Hue lights two ways:
+A local-only, open-source Android controller for Philips Hue lights built with Flutter. No cloud account, no analytics, and no external discovery servers.
 
-- **Bluetooth**: straight to Hue Bluetooth bulbs over GATT, no bridge needed.
-- **Hue Bridge**: through the bridge's local REST API (v1), after a link-button pairing.
+Repository: [chriscz/lumen](https://github.com/chriscz/lumen)
 
-Both transports sit behind one model, so every screen works the same for either kind of light.
+Lumen controls Philips Hue lights two ways behind a single unified interface:
 
-The protocol notes are in `docs/protocol.md`, the backlog in `docs/architecture.md`, and the architecture in `docs/architecture.md`.
+- **Bluetooth Low Energy (GATT):** Talk straight to Hue Bluetooth bulbs with no bridge required.
+- **Hue Bridge (Local REST API v1):** Discover bridges strictly on your local Wi-Fi network, pair with the link button, and control your lights and rooms.
+
+Not affiliated with Signify. Philips Hue is a trademark of Signify.
 
 ## Screens
 
@@ -17,165 +19,122 @@ The protocol notes are in `docs/protocol.md`, the backlog in `docs/architecture.
 | --- | --- | --- | --- |
 | ![Home](docs/screenshots/1-home.png) | ![Colour wheel](docs/screenshots/2-colour-wheel.png) | ![Effects](docs/screenshots/3-effects.png) | ![Profiles](docs/screenshots/4-profiles.png) |
 
-Rendered from the simulated home by `SHOTS=1 flutter test test/shots --update-goldens`. The test renderer draws elevation shadows as solid outlines, so the floating buttons look heavier than on a phone.
-
 ## Features
 
-- Add Hue Bluetooth bulbs directly, or pair a Hue Bridge (discovery or IP, link button) and bring in its lights and rooms.
-- Tiles that glow in each light's colour, with power and brightness on the tile.
-- Light detail: colour wheel (clamped to the bulb's gamut), white temperature, brightness, swatches, and the bulb's built-in effects (candle, fireplace, prism, sunrise and more) with speed.
-- Controls match each bulb, from what the bulb reports about itself: on/off (no brightness), white, white ambiance (the temperature slider spans the bulb's own range) or colour, with only the effects the bulb supports.
-- Gradient lights: a Gradient section with 2 to 5 colour stops, each picked on the wheel, and the blend modes the light supports.
-- When power returns (last state, always on at the current brightness and colour, or always off) and minimum brightness, on bulbs that have them.
-- Rooms with one switch each; All off.
-- Profiles: starter presets, scenes captured from your lights, colour presets built on the wheel, applied to all lights, rooms or single lights, with approximation on bulbs that cannot show a colour. Favourites appear as one-tap chips on Home.
-- Sleep fade: dims to off over up to an hour; the bulbs or the bridge run the fade, so the app can close.
-- Rename (on the bulb too, so other apps see the name), identify (blink), remove with undo, and per-light reachability. A removed bridge light stays out when the bridge is read again; Settings lists it under its bridge, to add back one at a time or all at once.
-- Lights that use Hue's extra (application-layer) security are explained rather than half working: they need the official app or a Hue Bridge.
-- Bridge lights refresh every 10 seconds to catch changes made elsewhere.
-- Light, dark or system theme. Demo mode with simulated lights.
-- Act as a Hue Bridge: other apps on the Wi-Fi control Lumen's lights (Bluetooth bulbs and bridge lights) through the Hue Bridge v1 API.
-- Music sync (experimental plugin): the lights pulse, change colour or glow with the music, heard through the microphone, the phone's own sound or audio capture.
-- Plugins: optional features switch on and off in Settings, Plugins, and serve their own versioned APIs on Lumen's bridge under `/__plugins__`.
+### Direct Bluetooth and Hue Bridge Control
 
-## Music sync
+- **Unified light tiles:** Every light tile glows in its current colour with quick power and brightness controls directly on Home.
+- **Adaptive controls per bulb:** Reads each bulb's capabilities (on/off, dimmable white, white ambiance with the bulb's exact colour-temperature range, or full colour) and shows only the controls and effects that bulb supports.
+- **Colour wheel and swatches:** Gamut-clamped CIE xy colour wheel, white temperature slider, brightness slider, and quick swatches.
+- **Built-in bulb effects:** Start and adjust speed for candle, fireplace, prism, sunrise, sparkle, opal, glisten, sunset, underwater, cosmos, sunbeam, and enchant (on bulbs that support them).
+- **Gradient lights:** Edit 2 to 5 colour stops on the colour wheel and pick supported gradient blend modes.
+- **Device configuration:** Rename lights directly on the bulb (so other apps see the name), identify (blink), configure power-on behaviour (last state, always on, or always off), and set minimum brightness.
+- **Bluetooth pairing helpers:** Lists bulbs already bonded to your phone, uses the proximity handshake with actionable troubleshooting prompts, and lets you make a bulb discoverable for other apps. Bulbs requiring Hue's extra application-layer security are clearly identified instead of failing silently.
+- **Local-only bridge discovery:** Finds bridges via known hosts, mDNS (Android `NsdManager` or built-in), SSDP, and LAN scan without contacting cloud endpoints. Automatically reconnects when a bridge drops offline, and remembers bridge lights you removed so they do not reappear on refresh.
 
-Music sync is an experimental plugin, on by default: Settings, Plugins switches it off (it stops and puts the lights back) or on again.
+### Rooms, Clusters, Profiles, and Sleep Fade
 
-The equaliser button on Home (or Settings, Music sync) opens Music sync. Pick where to listen, which lights move and how, then Start. Lumen finds the beat and sends each beat to the lights a little before it is due, so they keep time despite the radio delay. Stop puts every light back as it was.
+- **Rooms and linked clusters:** Group lights into rooms with a single switch and All off, or link lights into a cluster that moves together while still allowing individual touch-to-detach and rejoin.
+- **Profiles and scenes:** Starter presets, captured scenes from your current lights, and custom colour/white presets applied to all lights, rooms, or single lights, with one-tap favourite chips on Home.
+- **Sleep fade:** Dim lights to off over up to an hour directly on the bulb or bridge so the fade finishes even if you close Lumen.
 
-| Listen to | Good for | Needs |
-| --- | --- | --- |
-| Microphone (default) | Any speaker and any app, Spotify included. | The microphone permission. |
-| Phone sound | Music playing on this phone, Spotify included on most phones, without room noise. | The microphone permission (Android asks for it to read the sound output). Some phones do not share it. |
-| Audio capture | The cleanest signal from what this phone plays. | Android 10 or later, and a yes in Android's dialog each time. Apps can block it, and Spotify appears to. |
+### Act as a Hue Bridge
 
-Each source shows what it still needs, and one the phone lacks cannot be picked. A refused permission links to Android's settings.
+- **Local bridge emulator:** Expose Lumen's lights (Bluetooth bulbs and bridge lights alike) on your Wi-Fi network via the Hue Bridge v1 REST API, mDNS (`_hue._tcp`), and SSDP so other apps (such as another Lumen phone, Home Assistant, or openHAB) can control them.
+- **Background service:** Runs as an Android `connectedDevice` foreground service with an ongoing notification showing the listening address and active clients, plus an optional charging-only wake/Wi-Fi lock under Advanced.
+- **Stock Android port note:** Ordinary Android apps cannot bind port 80, so Lumen listens on the first free port in `1818, 1919, ..., 2727`. Clients that accept `host:port` work out of the box; clients that hardcode port 80 cannot connect to an unrooted phone.
 
-- **Lights**: all lights, one room, or any lights picked one by one. On/off lights are left alone.
-- **Style**: Pulse (flash on the beat, new colour each bar), Colours (next colour every beat) or Glow (brightness follows loudness, no flashing), with a Party, Warm or Cool palette and a Strength slider.
-- **Follow**: Auto (the predicted beat while it is steady, each hit as it is heard while it is not), Beat (only the predicted beat) or Hits (each hit, a little late, never waiting for a steady tempo). Glow follows neither.
-- **Beat finding**: Sensitivity moves the line a sound must cross to count as an onset; Steadiness sets how sure the beat must be before the lights follow it. The middle of each is the default.
-- **Timing**: moves the lights up to 300 ms earlier or later. With a Bluetooth speaker the phone's sound is heard late, so move it towards Later.
-- Flashes are kept to three a second at most.
-- When the beat goes, the lights keep its tempo for 8 beats or 4 s, whichever is longer, then breathe slowly at it until it comes back. In silence they rest.
-- The trace at the top shows the last five seconds: the onset signal as bars with the line a sound must cross, loudness behind it, a tick for each onset, a mark for each beat (a dot when fired, a ring when held, a triangle for a hit, a cross when dropped), breathing as a band, and how close the beat is to a lock. The info button under it explains each mark. **Tracking log**, at the bottom of the screen, writes what the beat finder decides to the log for Diagnostics.
-- Music sync keeps listening with Spotify in front, through a foreground service with a "Lumen music sync" notification.
-- Through Lumen's bridge: a phone paired with a Lumen bridge moves that phone's lights with music sync like any bridge lights, and paired apps can run the bridge phone's music sync through `/__plugins__/music-sync/v1.0.0/`.
+### Privacy, Diagnostics, and Demo Mode
 
-The beat tracking and its limits are in `docs/protocol.mdmusic-sync.md`.
+- **Zero cloud calls:** Discovery and control never leave Bluetooth and your LAN.
+- **Diagnostics screen:** Inspect live Bluetooth, bridge, and emulator logs with bridge keys automatically redacted, and share logs when troubleshooting.
+- **Demo mode:** Explore the full UI against byte-level simulated bulbs and a simulated bridge (`--dart-define=DEMO=true`).
 
-## Plugins
+## Experimental Features
 
-Settings, Plugins lists the optional features, each with a switch and, where it applies, an Experimental label. A plugin switched off leaves nothing behind: its buttons, settings and API go, and it puts back any lights it changed. The choice is kept between runs.
+Optional and in-development capabilities live behind Lumen's **Plugin system** (**Settings > Plugins**). Each plugin carries an **Experimental** badge where applicable and can be switched off cleanly at any time: turning a plugin off stops it, restores any lights it modified, and removes its Home buttons, Settings entries, and bridge API routes.
 
-While the phone acts as a Hue Bridge, plugins serve their own APIs beside the Hue API. Start at `GET /__plugins__` and follow the links: each plugin links to its details, which list its versions (semantic, oldest first) and the `latest`, and every answer links to what can be done next. A version's API needs a paired app's key in the `hue-application-key` header:
+### Music Sync (Experimental Plugin)
+
+Enabled by default and toggleable in **Settings > Plugins**. Open it from the equaliser button on Home (or **Settings > Music sync**).
+
+- **Audio sources:**
+  - **Microphone (default):** Works with any speaker or app (including Spotify); requires microphone permission.
+  - **Phone sound:** Reads Android's output mix (`Visualizer`) without room noise; works with Spotify on many phones, though some OEM ROMs do not share session 0.
+  - **Audio capture:** Uses Android 10+ `AudioPlaybackCapture` with a system confirmation dialog; apps can opt out (Spotify currently blocks capture).
+- **Styles:** **Pulse** (flash on beats and shift palette each bar), **Colours** (cycle palette on each beat), and **Glow** (smooth loudness-to-brightness and bass-to-colour). Beat flashes are capped at 3 per second (333 ms minimum interval) for comfort; users sensitive to flashing should use **Glow**.
+- **Follow modes and tuning:** Choose **Auto** (beat grid when locked, hits otherwise), **Beat**, or **Hits**, pick All lights, a room, or individual lights, and tune Strength, Sensitivity, Steadiness, and Timing with a live 5-second onset trace.
+- **Why it is marked Experimental:** Real-world beat locking through phone microphones or `Visualizer` is still under active refinement (dense tracks can drop lock, some phones mute `Visualizer` session 0, and Hue Entertainment streaming is not yet implemented). See [docs/music-sync.md](docs/music-sync.md) for technical details.
+
+### Versioned Bridge Plugin API (`/__plugins__`)
+
+When **Act as a Hue Bridge** is running, enabled plugins can expose versioned HTTP endpoints under `/__plugins__/<plugin>/v<x.y.z>/` (discoverable via `GET /__plugins__` and authenticated with a paired app's `hue-application-key` header). Music sync exposes `/__plugins__/music-sync/v1.0.0/` as an experimental API that may evolve before stabilizing.
+
+## Installing Lumen
+
+### Option 1: Obtainium (Recommended for Direct Updates)
+
+[Obtainium](https://github.com/ImranR98/Obtainium) tracks GitHub Releases directly and keeps Lumen up to date automatically:
+
+1. In Obtainium, tap **Add App**.
+2. Paste the repository URL: `https://github.com/chriscz/lumen`
+3. Obtainium automatically detects the release APKs and picks the matching CPU architecture (`arm64-v8a` on most modern Android phones, `armeabi-v7a` on older 32-bit devices, `x86_64` on emulators, or `universal` as fallback).
+
+### Option 2: Direct APK from GitHub Releases
+
+Download an APK from [GitHub Releases](https://github.com/chriscz/lumen/releases):
+
+- `lumen-vX.Y.Z-arm64-v8a.apk`: recommended for most modern Android phones (smallest download)
+- `lumen-vX.Y.Z-armeabi-v7a.apk`: older 32-bit ARM Android phones
+- `lumen-vX.Y.Z-x86_64.apk`: x86_64 Android devices and emulators
+- `lumen-vX.Y.Z-universal.apk`: works on all Android ABIs
+
+### Option 3: F-Droid (Planned)
+
+Lumen is structured for F-Droid inclusion (100% permissive open-source dependencies, Google Play `dependenciesInfo` disabled, Fastlane store metadata in `fastlane/metadata/android/`, and a reproducible-build recipe in `packaging/fdroid/dev.chriscz.lumen.yml`). Once listed on F-Droid with Reproducible Builds enabled, F-Droid will verify and serve the exact developer-signed APK so Obtainium and F-Droid remain interchangeable without signature mismatches.
+
+### Verifying Downloaded APKs
+
+Every GitHub Release ships with `SHA256SUMS.txt` and GitHub SLSA build provenance attestations:
 
 ```sh
-curl http://192.168.1.20:1818/__plugins__
-curl http://192.168.1.20:1818/__plugins__/music-sync
-curl -H 'hue-application-key: <key>' http://192.168.1.20:1818/__plugins__/music-sync/v1.0.0/
-curl -X POST -H 'hue-application-key: <key>' http://192.168.1.20:1818/__plugins__/music-sync/v1.0.0/start
+# 1. Verify file integrity
+sha256sum -c SHA256SUMS.txt --ignore-missing
+
+# 2. Verify GitHub Actions build provenance (requires GitHub CLI)
+gh attestation verify lumen-vX.Y.Z-arm64-v8a.apk --owner chriscz
+
+# 3. Inspect APK signing certificate fingerprint (Android build-tools)
+apksigner verify --print-certs lumen-vX.Y.Z-arm64-v8a.apk
 ```
 
-The requests are in `docs/protocol.mdbridge-emulation.md`, and the ideas that come next (remote music sync, a direct control channel) in the backlog, increment 13.
+## Building and Testing from Source
 
-## Act as a Hue Bridge
-
-Settings, Act as a Hue Bridge, turns the phone into an emulated Hue Bridge. Other apps then see the lights Lumen controls, its rooms (as bridge rooms) and its profiles (as scenes), and can switch, dim and colour them through the v1 API. It does not bridge other Hue devices: the phone has no Zigbee radio.
-
-1. Switch it on. Settings shows the address, for example `http://192.168.1.20:1818`.
-2. Announce on Wi-Fi (on by default) advertises the bridge so apps can find it: mDNS as `_hue._tcp.local` (the instance is named after the bridge and the end of its id, for example `Lumen-DDEEFF`) and SSDP. Settings says "Announcing as Lumen-DDEEFF on Wi-Fi via mDNS (Android) and SSDP", or why not, such as a busy multicast port. Switch it off to stay hidden; apps given the address can still use the bridge. The bridge says goodbye on both protocols when it stops. Under Advanced, mDNS and SSDP each have their own switch, and on Android mDNS can come from Android's own responder (NsdManager, the default) or Lumen's built-in one.
-3. Press link button in Settings, then pair from the other app within 30 seconds.
-4. Settings sums up the paired apps ("2 apps paired, 1 active in the last 5 minutes") and says when each was last seen; remove one to lock it out.
-
-Android does not let ordinary apps use port 80, so the bridge tries 80 first and then listens on the first free port of 1818, 1919, 2020 and so on up to 2727 (ten ports, 101 apart), where Lumen on another phone looks. Settings shows the port in use. Apps that only look on port 80, such as Alexa and the official Hue app, will not find it. Apps that accept `host:port` work: in Home Assistant add the Philips Hue integration by hand with the host `192.168.1.20:1818`; in Lumen on another phone enter the same in Add light, Hue Bridge, Bridge address. Lumen talks plain HTTP to an address with a port and HTTPS to a bare address (a real bridge).
-
-On Android, Run in the background (on by default) keeps the bridge listening with the screen off through a foreground service and a quiet "Lumen bridge running" notification. Battery optimisation opens Android's list so Lumen can be set to Unrestricted, and Stay fully awake while charging (Advanced, off by default) holds a wake lock and a Wi-Fi lock only while plugged in. Settings, Running Lumen as a bridge, explains the trade-offs. Swiping Lumen away from the recent apps still ends the bridge. The research behind it is in `docs/protocol.mdbridge-emulation.md`.
-
-## Run it
+Requires Flutter `3.47.7` (Dart `3.13.5`), JDK 21, and the Android SDK (for APK builds).
 
 ```sh
-flutter pub get
-flutter run                          # on a phone, with real bulbs and bridges
-flutter run --dart-define=DEMO=true  # simulated bulbs and a simulated bridge
-```
-
-Demo mode runs the same app against the simulated bulbs and bridge the tests use. Its bridge "presses" its own link button every few seconds.
-
-## Cloud environment setup
-
-`tool/setup_cloud_env.sh` prepares a fresh Claude Code cloud container (Ubuntu 24.04, root) to build and test the app. It installs the system packages, Flutter 3.47.7 in `/opt/flutter`, and the Android SDK in `/opt/android-sdk`, writes the environment to `/etc/profile.d/hue-flutter.sh` and `/root/.hue_env`, then runs `flutter pub get`. Each step skips itself when already done, so a re-run takes about a second.
-
-Paste this line into the environment's setup script field so every new session starts ready:
-
-```sh
-bash tool/setup_cloud_env.sh
-```
-
-Or run `bash ./tool/setup_cloud_env.sh` once from the repository root in a session, then `source /root/.hue_env`. The script does not build the APK; the first Gradle build can hit HTTP 429 from Maven Central, and a later retry usually succeeds.
-
-## Test it
-
-```sh
+flutter pub get --enforce-lockfile
 flutter analyze
-flutter test                                          # unit and controller tests
-flutter test integration_test -d flutter-tester       # end-to-end, headless, fake time
-xvfb-run -a flutter test integration_test -d linux    # end-to-end on a real desktop device
-flutter test integration_test -d <android-device-id>  # end-to-end on a phone or emulator
+flutter test                                    # 1,038 unit and headless E2E tests
+bash tool/coverage.sh                           # enforces 100% line coverage across lib/
+flutter run --dart-define=DEMO=true             # launch with simulated lights
+bash tool/package_android.sh --unsigned --debug # build unsigned release APKs locally
 ```
 
-The end-to-end tests drive the full widget tree. The simulated bulb decodes the bytes the app writes with its own reading of the GATT protocol, and the simulated bridge answers the v1 REST API, so a passing test proves the wire format and not just the calls.
-
-## Coverage
+To run the Ruby hook and release script tests:
 
 ```sh
-tool/coverage.sh            # whole suite; fails below 100% line coverage
-tool/coverage.sh test/ble   # some tests; prints uncovered lines per file
+for t in scripts/test_*.rb; do ruby "$t"; done
 ```
 
-The gate counts every Dart file in `lib/`, so a file no test loads counts as uncovered. The only excluded line is `void main()`, which only the platform calls; tests start the app through `bootstrap`. Two mDNS tests bind UDP port 5353 on loopback with port sharing, so they fail on a machine where another program holds that port without sharing it.
+## Documentation
 
-## Layout
+- [Protocol reference](docs/protocol.md): Bluetooth GATT wire format, Hue Bridge local API v1, and Bridge emulation (mDNS/SSDP).
+- [Architecture](docs/architecture.md): module layout, design decisions, and testing harness.
+- [Music sync](docs/music-sync.md): audio sources, DSP beat tracking, and experimental status.
+- [Releasing and signing security](docs/releasing.md): keystore creation and backup, GitHub Environment and ruleset hardening, Obtainium, and F-Droid submission.
 
-| Path | What |
-| --- | --- |
-| `lib/domain/` | Lights, rooms, profiles, errors. No Flutter, no I/O. |
-| `lib/color/` | xy, RGB, mireds and gamut maths. |
-| `lib/transport/ble/` | GATT codec, the driver (connection pool, reconnect) and the universal_ble adapter. |
-| `lib/transport/bridge/` | Bridge v1 client and discovery. |
-| `lib/emulator/` | The emulated Hue Bridge: v1 API handler, HTTP and SSDP server, settings and the multicast lock. |
-| `lib/log/` | The persistent log, the run header and uncaught error capture. |
-| `lib/sim/` | Simulated bulbs, bridge and the demo home. |
-| `lib/state/` | `HomeController`: the single source of truth, optimistic updates, write coalescing, persistence. |
-| `lib/ui/` | Screens and widgets. |
-| `packages/lumen_bonded_devices/` | A small local Android plugin: bonded Bluetooth devices and the app settings page. |
-| `test/` | Unit and controller tests. |
-| `integration_test/` | End-to-end tests and their harness. |
+## Attribution and License
 
-## Pairing a Bluetooth bulb
-
-Open Add light, Bluetooth. Lumen lists two kinds of bulbs:
-
-- **Paired with this phone**: bulbs this phone already has a Bluetooth bond with, for example from the official Hue app. Bonds belong to the phone, so these need no pairing mode; tap one to add it. They often do not advertise, which is why a scan alone misses them.
-- **Nearby**: bulbs that advertise. A "Ready to pair" chip marks the ones that accept a new phone right now.
-
-When a bulb will not pair, try these in order. The same steps are in the help card at the bottom of the Bluetooth tab.
-
-1. **Close the official Hue app** (swipe it away from recent apps). A bulb connected to it accepts no other phone.
-2. **Make it discoverable**: in the Hue app open Settings, Voice assistants, Amazon Alexa (or Google Home), and tap Make discoverable. Close the Hue app, then add the bulb in Lumen within a minute or two. A bulb Lumen already controls can be made discoverable for another phone or app from its menu, Make discoverable.
-3. **Last resort, factory reset**: switch the bulb off and on five times, about a second apart, ending on. It blinks, gets a new Bluetooth address and must be added in the Hue app again too.
-
-If the bulb says its power-on window has passed, switch it off and on and add it within a minute. A bulb joined to a Hue Bridge is best controlled through the bridge. When adding fails, the banner offers Retry and Copy diagnostics (the last 200 log lines).
-
-## Logs and debug mode
-
-Lumen keeps a log in its app storage. It survives restarts and is only removed when you clear it.
-
-1. Open Settings and turn on **Debug logging**. The log then records every Bluetooth step (adverts, connects with timing, services, the pairing handshake, every read and write in hex, the raw platform errors) and every bridge call (with the app key cut to its first four characters).
-2. Reproduce the problem, for example try to add the bulb again.
-3. Open Settings, **Diagnostics**. It shows Bluetooth state, permissions, lights, connected bulbs and the log size, then the log, newest at the bottom, with level filters. Tap **Share** to send the log file (by mail or chat), or **Save a copy** to keep it, for example in Downloads through Files. **Copy all** copies the log as text. **Clear** (in debug mode) deletes it.
-
-With debug logging off, Lumen logs info, warnings and errors only. Uncaught errors are always logged with their stack traces, and every run starts with a header: app version, build mode, Android version, device, Bluetooth state and permissions.
-
-If Bluetooth permission is missing or Bluetooth is off, Lumen shows one snack bar with Retry rather than asking again on its own; when Android no longer shows the permission prompt, the action opens the app's settings.
+- **License:** [MIT License](LICENSE), Copyright (c) 2026 Chris Coetzee.
+- **Commit attribution:** AI tools are used under human direction to assist development, not as authors or co-authors. Git authorship and `Co-Authored-By` trailers are reserved for humans, and AI tooling is transparently disclosed via `Assisted-by-AI-model` and `Assisted-by-AI-harness` trailers. See [AGENTS.md](AGENTS.md) for details.

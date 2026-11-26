@@ -1,8 +1,37 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Optional release signing credentials, loaded from environment variables (CI)
+// or a gitignored android/key.properties file (local). Never silently fall back
+// to debug keys for release builds: when no release keystore is configured,
+// release builds produce an unsigned APK (used by PR CI smoke checks and
+// F-Droid reproducible builds).
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
+}
+
+fun signingValue(envName: String, propName: String): String? =
+    System.getenv(envName)?.takeIf { it.isNotBlank() }
+        ?: keystoreProperties.getProperty(propName)?.takeIf { it.isNotBlank() }
+
+val releaseStoreFilePath = signingValue("LUMEN_KEYSTORE_PATH", "storeFile")
+val releaseStorePassword = signingValue("LUMEN_KEYSTORE_PASSWORD", "storePassword")
+val releaseKeyAlias = signingValue("LUMEN_KEY_ALIAS", "keyAlias")
+val releaseKeyPassword = signingValue("LUMEN_KEY_PASSWORD", "keyPassword")
+
+val hasReleaseSigning =
+    releaseStoreFilePath != null &&
+        releaseStorePassword != null &&
+        releaseKeyAlias != null &&
+        releaseKeyPassword != null
 
 android {
     namespace = "dev.chriscz.lumen"
@@ -15,25 +44,38 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "dev.chriscz.lumen"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
-        // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
-        // You can force using the value of versionCode by specifying the `-P force-version-code-ignoring-abi=true`
-        // flag during build.
+        // is added automatically by Flutter.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    // Omit Google Play's proprietary encrypted dependency metadata block so APKs
+    // remain F-Droid compliant and byte-reproducible.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
+    if (hasReleaseSigning) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(releaseStoreFilePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }

@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|WebFetch|WebSearch|mcp__Firecrawl__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ruby scripts/check_outbound_email.rb",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ruby scripts/check_claude_identity.rb",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

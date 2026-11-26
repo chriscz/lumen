@@ -1,0 +1,30 @@
+{
+  "outbound-email-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command|search_web|read_url_content|fetch_url|web_fetch|web_search|mcp__Firecrawl__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd .. && ruby scripts/check_outbound_email.rb",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "claude-identity-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd .. && ruby scripts/check_claude_identity.rb",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

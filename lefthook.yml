@@ -1,0 +1,30 @@
+# Git hooks managed by lefthook. Activate with `lefthook install`.
+# Every job enforces a rule from AGENTS.md / CLAUDE.md.
+pre-commit:
+  parallel: true
+  jobs:
+    - name: kebab-case branch name
+      run: ruby scripts/check_branch_name.rb
+    - name: no em-dashes
+      run: ruby scripts/check_em_dashes.rb
+    - name: no signing secrets
+      run: ruby scripts/check_signing_secrets.rb
+    - name: ruby test suites
+      glob: "scripts/*.rb"
+      run: |
+        git ls-files -z -- 'scripts/test_*.rb' |
+          xargs -0 -n 1 sh -c 'ruby "$1" > /dev/null || { echo "FAILED: $1"; exit 1; }' sh
+
+commit-msg:
+  jobs:
+    - name: conventional commit with assisted-by trailers
+      run: ruby scripts/check_commit_message.rb {1}
+
+pre-push:
+  jobs:
+    - name: kebab-case branch name
+      run: ruby scripts/check_branch_name.rb
+    - name: no em-dashes in any tracked file
+      run: ruby scripts/check_em_dashes.rb --all
+    - name: no signing secrets in any tracked file
+      run: ruby scripts/check_signing_secrets.rb --all

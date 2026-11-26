@@ -1,0 +1,53 @@
+# Draft F-Droid metadata recipe for Lumen (fdroiddata: metadata/dev.chriscz.lumen.yml).
+#
+# Reproducible Builds:
+#   When `Binaries:` is configured and F-Droid's source build matches the
+#   unsigned contents of the upstream GitHub Release APK byte-for-byte,
+#   F-Droid ships the APK signed with the developer's own release key.
+#   That allows users to switch seamlessly between Obtainium (GitHub Releases)
+#   and F-Droid without signature mismatch errors.
+#
+# Before opening an RFP / Merge Request in https://gitlab.com/fdroid/fdroiddata:
+#   1. Publish at least one signed GitHub Release tag (e.g. v0.1.0).
+#   2. Verify local reproducibility with `fdroid build --verify-diffoscope` or
+#      `fdroidserver` against the published APK.
+#   3. Replace the example `commit`, `versionName`, and `versionCode` below with
+#      the published release values.
+
+Categories:
+  - System
+  - Connectivity
+License: MIT
+AuthorName: Chris Coetzee
+SourceCode: https://github.com/chriscz/lumen
+IssueTracker: https://github.com/chriscz/lumen/issues
+Changelog: https://github.com/chriscz/lumen/blob/main/CHANGELOG.md
+
+AutoName: Lumen
+
+RepoType: git
+Repo: https://github.com/chriscz/lumen.git
+
+# Developer-signed GitHub Release binary for F-Droid Reproducible Builds.
+# (Start with universal APK or configure per-ABI builds once verified.)
+Binaries: https://github.com/chriscz/lumen/releases/download/v%v/lumen-v%v-universal.apk
+
+Builds:
+  - versionName: 0.1.0
+    versionCode: 1
+    commit: v0.1.0
+    output: build/app/outputs/flutter-apk/app-release.apk
+    srclibs:
+      - flutter@3.47.7
+    rm:
+      - linux
+    prebuild:
+      - $$flutter$$/bin/flutter config --no-analytics
+      - $$flutter$$/bin/flutter pub get --enforce-lockfile
+    build:
+      - $$flutter$$/bin/flutter build apk --release
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags ^v[0-9]+\.[0-9]+\.[0-9]+$
+CurrentVersion: 0.1.0
+CurrentVersionCode: 1
