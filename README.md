@@ -108,6 +108,19 @@ gh attestation verify lumen-vX.Y.Z-arm64-v8a.apk --owner chriscz
 apksigner verify --print-certs lumen-vX.Y.Z-arm64-v8a.apk
 ```
 
+Official release APKs are signed with the following certificate:
+
+| Field | Value |
+| --- | --- |
+| Owner / Issuer | `CN=Lumen, O=chriscz` |
+| Key algorithm | 4096-bit RSA (`SHA384withRSA`) |
+| Serial number | `2ead252f1804f760` |
+| Valid | 2026-11-26 to 2054-04-13 |
+| SHA-256 (`apksigner`) | `b2ad24c8b17d25ac0a3c3aa76deb8383b2a04c63896004847cc84e2be9734f29` |
+| SHA-256 (`keytool`) | `B2:AD:24:C8:B1:7D:25:AC:0A:3C:3A:A7:6D:EB:83:83:B2:A0:4C:63:89:60:04:84:7C:C8:4E:2B:E9:73:4F:29` |
+| SHA-1 (`apksigner`) | `b07a21da60ceb89e8072c26a84b6f65cf7502de1` |
+| SHA-1 (`keytool`) | `B0:7A:21:DA:60:CE:B8:9E:80:72:C2:6A:84:B6:F6:5C:F7:50:2D:E1` |
+
 ## Building and Testing from Source
 
 Requires Flutter `3.47.7` (Dart `3.13.5`), JDK 21, and the Android SDK (for APK builds).
