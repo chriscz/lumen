@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-26
+
 ### Added
 
 - **Direct Hue Bluetooth (GATT) control:** Scan, proximity-pair, connect on demand (7-connection LRU pool), read capabilities, control power, brightness, colour temperature, CIE xy colour, built-in effects, gradients (2 to 5 stops and blend modes), power-on behaviour, minimum brightness, rename on the bulb, identify (blink), and make discoverable.
@@ -16,4 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Plugin system and Music sync (Experimental):** Toggleable `LumenPlugin` architecture with versioned `/__plugins__` bridge routes and the experimental Music sync plugin (Microphone, Phone sound Visualizer, and Android 10+ Audio capture; Pulse, Colours, and Glow styles; Auto, Beat, and Hits follow modes; live 5-second onset trace).
 - **Release pipeline and F-Droid / Obtainium support:** Isolated GitHub `release` environment APK signing with SLSA build provenance attestations, split-per-ABI + universal APKs, `SHA256SUMS.txt`, Fastlane Android metadata, and draft F-Droid reproducible-build recipe.
 
-[Unreleased]: https://github.com/chriscz/lumen/compare/HEAD...HEAD
+### Features
+
+- **lumen:** initial standalone Lumen Android app (`e68c49a`)
+
+[Unreleased]: https://github.com/chriscz/lumen/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/chriscz/lumen/releases/tag/v1.0.0
